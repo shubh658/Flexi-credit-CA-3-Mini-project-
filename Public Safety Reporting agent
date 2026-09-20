@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Civic Watch — Incident Reporting Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1B2430;
+    --ink-soft: #2E394A;
+    --paper: #F6F3EC;
+    --paper-card: #FFFFFF;
+    --line: #D8D2C2;
+    --line-strong: #B9B29C;
+    --amber: #C98A1B;
+    --amber-dark: #6E4A0E;
+    --amber-fill: #FBEDD3;
+    --teal: #2F6E64;
+    --teal-dark: #163C36;
+    --teal-fill: #E1EFEC;
+    --rust: #A23B2E;
+    --rust-dark: #5C1F17;
+    --rust-fill: #F6E1DD;
+    --text: #211E19;
+    --text-soft: #5B564C;
+    --radius: 10px;
+    color-scheme: light;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --ink: #E8E6DF;
+      --ink-soft: #C7C3B7;
+      --paper: #14171C;
+      --paper-card: #1D2128;
+      --line: #343A44;
+      --line-strong: #454C58;
+      --amber: #E3AA4C;
+      --amber-dark: #F6DFAF;
+      --amber-fill: #3A2E15;
+      --teal: #6FBAAC;
+      --teal-dark: #C9E7DF;
+      --teal-fill: #16302B;
+      --rust: #E28C7E;
+      --rust-dark: #F5CFC7;
+      --rust-fill: #3A1E19;
+      --text: #E8E6DF;
+      --text-soft: #A6A196;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #E8E6DF;
+    --ink-soft: #C7C3B7;
+    --paper: #14171C;
+    --paper-card: #1D2128;
+    --line: #343A44;
+    --line-strong: #454C58;
+    --amber: #E3AA4C;
+    --amber-dark: #F6DFAF;
+    --amber-fill: #3A2E15;
+    --teal: #6FBAAC;
+    --teal-dark: #C9E7DF;
+    --teal-fill: #16302B;
+    --rust: #E28C7E;
+    --rust-dark: #F5CFC7;
+    --rust-fill: #3A1E19;
+    --text: #E8E6DF;
+    --text-soft: #A6A196;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--text);
+    font-family: 'Source Sans 3', -apple-system, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    min-height: 100%;
+  }
+  .topbar {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 14px 20px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 3px solid var(--amber);
+  }
+  .topbar .badge {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--amber);
+    color: #241a06;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 15px;
+    flex-shrink: 0;
+  }
+  .topbar h1 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  .topbar p { margin: 1px 0 0; font-size: 12.5px; color: #C7C2B4; }
+
+  .emergency-strip {
+    background: var(--rust-fill);
+    color: var(--rust-dark);
+    border-bottom: 1px solid var(--line);
+    padding: 9px 20px;
+    font-size: 13.5px;
+    text-align: center;
+    transition: background .2s ease, color .2s ease;
+  }
+  .emergency-strip strong { font-weight: 600; }
+  .emergency-strip.alert {
+    background: var(--rust);
+    color: #fff;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 28px;
+  }
+  @media (max-width: 820px) {
+    .wrap { grid-template-columns: 1fr; }
+  }
+
+  .panel-title {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin: 0 0 12px;
+  }
+
+  /* --- Intake card --- */
+  .intake {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px 24px 22px;
+  }
+  .step-track {
+    display: flex; gap: 6px;
+    margin-bottom: 20px;
+  }
+  .step-track span {
+    height: 4px; flex: 1;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .step-track span i {
+    display: block; height: 100%; width: 0%;
+    background: var(--teal);
+    transition: width .25s ease;
+  }
+  .step-track span.done i { width: 100%; }
+  .step-track span.current i { width: 100%; background: var(--amber); }
+
+  .q-eyebrow { font-size: 12.5px; color: var(--text-soft); margin: 0 0 4px; }
+  .q-title {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    color: var(--ink);
+    margin: 0 0 6px;
+    line-height: 1.35;
+  }
+  .q-help { font-size: 13.5px; color: var(--text-soft); margin: 0 0 16px; }
+
+  label.field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 14px 0 6px;
+  }
+  label.field-label:first-of-type { margin-top: 0; }
+  textarea, input[type="text"], select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14.5px;
+    color: var(--text);
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 10px 12px;
+    resize: vertical;
+  }
+  textarea:focus, input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-fill);
+  }
+  .hint { font-size: 12px; color: var(--text-soft); margin: 5px 0 0; }
+  .err { font-size: 12.5px; color: var(--rust); margin: 5px 0 0; display: none; }
+
+  .detect-panel {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--teal-fill);
+  }
+  .detect-panel.empty {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--line-strong);
+    color: var(--text-soft);
+    font-size: 13px;
+    text-align: center;
+    padding: 18px 16px;
+  }
+  .detect-head {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600;
+    color: var(--teal-dark);
+    margin-bottom: 10px;
+    text-transform: none;
+  }
+  .detect-head .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+  .detect-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+  }
+  @media (max-width: 480px) { .detect-grid { grid-template-columns: 1fr; } }
+  .detect-field label {
+    display: block; font-size: 11.5px; color: var(--teal-dark);
+    font-weight: 600; margin-bottom: 4px;
+  }
+  .detect-field select, .detect-field input[type="text"] {
+    background: var(--paper-card);
+  }
+  .safety-block {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dotted var(--line-strong);
+  }
+  .safety-head {
+    font-size: 11.5px; font-weight: 600;
+    color: var(--teal-dark);
+    margin-bottom: 6px;
+  }
+  .safety-list {
+    margin: 0; padding-left: 18px;
+    font-size: 13px; color: var(--text);
+  }
+  .safety-list li { margin-bottom: 3px; }
+
+  .danger-callout {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--rust-fill);
+    color: var(--rust-dark);
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    display: none;
+  }
+  .danger-callout.show { display: block; }
+  .danger-callout strong { font-weight: 600; }
+
+  .row-btns {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 22px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  button.primary, button.secondary, button.ghost {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 11px 18px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  button.primary { background: var(--ink); color: var(--paper); }
+  button.primary:hover { background: var(--ink-soft); }
+  button.secondary { background: transparent; border-color: var(--line-strong); color: var(--text); }
+  button.secondary:hover { border-color: var(--ink); }
+  button.ghost { background: transparent; border: none; color: var(--text-soft); padding: 11px 4px; }
+  button.ghost:hover { color: var(--ink); text-decoration: underline; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px;
+    font-size: 14px;
+  }
+  .toggle-row input { width: 17px; height: 17px; }
+
+  .confirm-box {
+    text-align: center;
+    padding: 10px 0 4px;
+  }
+  .confirm-box .ring {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--teal-fill);
+    color: var(--teal-dark);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 26px;
+  }
+  .confirm-box h2 {
+    font-family: 'Archivo', sans-serif; font-weight: 600; font-size: 19px;
+    margin: 0 0 6px; color: var(--ink);
+  }
+  .confirm-box p { color: var(--text-soft); font-size: 14px; margin: 0 auto; max-width: 380px; }
+  .ticket-id-big {
+    font-family: 'Archivo', sans-serif;
+    font-size: 15px; font-weight: 600;
+    color: var(--teal-dark);
+    background: var(--teal-fill);
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 6px;
+    margin: 14px 0;
+    letter-spacing: 0.5px;
+  }
+
+  /* --- Slip / ticket preview --- */
+  .slip-wrap { position: sticky; top: 16px; }
+  .slip {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 20px 6px;
+    position: relative;
+  }
+  .slip::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 0;
+    border-bottom: 2px dashed var(--line-strong);
+  }
+  .slip-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 10px; margin-bottom: 12px;
+  }
+  .slip-head h3 {
+    font-family: 'Archivo', sans-serif; font-weight: 600; font-size: 14px;
+    margin: 0; color: var(--ink);
+  }
+  .slip-head span { font-size: 11.5px; color: var(--text-soft); }
+  .slip-row {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px dotted var(--line);
+    font-size: 13px;
+  }
+  .slip-row:last-child { border-bottom: none; }
+  .slip-row .k { color: var(--text-soft); flex-shrink: 0; }
+  .slip-row .v { text-align: right; font-weight: 500; color: var(--text); max-width: 62%; }
+  .slip-empty {
+    color: var(--text-soft); font-size: 13.5px;
+    padding: 10px 0 18px;
+  }
+  .sev-pill {
+    display: inline-block; font-size: 11.5px; font-weight: 600;
+    padding: 2px 9px; border-radius: 20px;
+  }
+  .sev-routine { background: var(--teal-fill); color: var(--teal-dark); }
+  .sev-priority { background: var(--amber-fill); color: var(--amber-dark); }
+  .sev-urgent { background: var(--rust-fill); color: var(--rust-dark); }
+
+  .log-section { margin-top: 22px; }
+  .log-item {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 13px 16px;
+    margin-bottom: 10px;
+  }
+  .log-item .li-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .log-item .li-id { font-family: 'Archivo', sans-serif; font-weight: 600; font-size: 13px; color: var(--ink); }
+  .log-item .li-cat { font-size: 13px; color: var(--text-soft); margin: 0; }
+  .log-item .li-time { font-size: 11.5px; color: var(--text-soft); }
+  .log-empty {
+    font-size: 13.5px; color: var(--text-soft);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    padding: 16px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="badge">CW</div>
+  <div>
+    <h1>Civic Watch — incident intake</h1>
+    <p>Describe what happened — the system fills in the rest</p>
+  </div>
+</div>
+<div class="emergency-strip" id="emergencyStrip">
+  <strong>In immediate danger, witnessing a crime in progress, or someone is hurt?</strong> Call your local emergency number now — don't wait to file a report here.
+</div>
+
+<div class="wrap">
+  <div>
+    <p class="panel-title">Report an incident</p>
+    <div class="intake" id="intake">
+      <div class="step-track" id="stepTrack"></div>
+      <div id="stepBody"></div>
+    </div>
+  </div>
+
+  <div class="slip-wrap">
+    <p class="panel-title">Report preview</p>
+    <div class="slip" id="slip">
+      <div class="slip-head">
+        <h3 id="slipTicketLabel">Draft — no ticket yet</h3>
+        <span id="slipStatus">In progress</span>
+      </div>
+      <div id="slipBody"></div>
+    </div>
+
+    <div class="log-section">
+      <p class="panel-title">Filed this session</p>
+      <div id="logList"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+
+  var CATEGORY_LABELS = {
+    hazard: "Hazard or unsafe condition",
+    suspicious: "Suspicious activity",
+    vandalism: "Property damage or vandalism",
+    traffic: "Traffic or road issue",
+    accident: "Vehicle accident or collision",
+    fire: "Fire or smoke",
+    utility: "Utility outage or damage",
+    environmental: "Environmental hazard",
+    animal: "Animal concern",
+    noise: "Noise or disturbance",
+    other: "General incident"
+  };
+
+  var CATEGORY_KEYWORDS = {
+    hazard: ["downed wire","power line","live wire","sinkhole","gas smell","gas leak","flooding","flooded","collapsed","exposed wire","sparking","leaking","hole in the road","open manhole","tree down","fallen tree","structural damage"],
+    suspicious: ["suspicious","prowler","breaking in","break-in","trying door handles","unfamiliar van","loitering","casing the","peeking into windows","trespassing","forced entry"],
+    vandalism: ["graffiti","spray paint","broken window","smashed","vandalized","slashed tire","damaged property","spray-painted","shattered"],
+    traffic: ["pothole","traffic light","signal is out","stop sign","street light","streetlight","reckless driving","speeding","road is","intersection","broken signal","missing sign","road closure","blocked lane","double parked","illegally parked"],
+    accident: ["car accident","collision","crashed","car crash","fender bender","rear-ended","hit and run","vehicle rollover","totaled","pile up","multi-car"],
+    fire: ["fire","smoke coming from","smoke is","burning smell","flames","caught fire","wildfire","brush fire","smoldering"],
+    utility: ["power outage","no power","water main","burst pipe","water leak","sewage","manhole cover","electrical fault","transformer","no water pressure","gas outage"],
+    environmental: ["illegal dumping","chemical smell","oil spill","contaminated","polluted","dead fish","toxic","hazardous waste","dumped trash","strong chemical odor"],
+    animal: ["stray dog","aggressive dog","loose animal","injured animal","dead animal","wild animal","coyote","raccoon acting","animal attack","bit by a dog"],
+    noise: ["loud music","party next door","noise complaint","dog barking","barking dog","alarm going off","yelling","shouting match","disturbance","loud gathering"]
+  };
+
+  var SEVERITY_BASE = {
+    hazard: "priority",
+    suspicious: "priority",
+    fire: "priority",
+    accident: "priority",
+    utility: "routine",
+    environmental: "routine",
+    animal: "routine",
+    vandalism: "routine",
+    traffic: "routine",
+    noise: "routine",
+    other: "routine"
+  };
+
+  var SAFETY_MEASURES = {
+    hazard: ["Keep people and vehicles away from the area", "Do not attempt to move or repair the hazard yourself", "Note any visible warning signs or leaks for responders"],
+    suspicious: ["Keep a safe distance and avoid direct confrontation", "Note descriptions of people or vehicles without approaching", "Move to a well-lit or populated area if you feel unsafe"],
+    vandalism: ["Photograph the damage if it's safe to do so", "Avoid touching or cleaning the area until it's documented", "Report to the property owner or management if applicable"],
+    traffic: ["Slow down and use caution when passing the area", "Consider an alternate route until it's resolved", "Avoid stopping in traffic lanes to look"],
+    accident: ["Do not move injured individuals unless there's immediate danger", "Turn on hazard lights or set up warning triangles if safe", "Keep the area clear for emergency responders"],
+    fire: ["Evacuate the immediate area and keep others back", "Do not attempt to fight the fire yourself", "Call emergency services immediately if you haven't already"],
+    utility: ["Avoid contact with exposed lines, pipes, or equipment", "Turn off the related utility at the source if it's safe", "Warn others nearby about the outage or hazard"],
+    environmental: ["Avoid direct contact with the material or substance", "Keep children and pets away from the area", "Note any odors, colors, or spread for responders"],
+    animal: ["Keep a safe distance and avoid approaching the animal", "Do not attempt to feed or corner the animal", "Keep children and pets indoors until it's addressed"],
+    noise: ["Note the time and duration if it continues", "Avoid confronting the source directly", "Contact building management if it's a recurring issue"],
+    other: ["Document details and take photos if it's safe to do so", "Avoid putting yourself at risk to investigate further", "Note the time and any changes if the situation continues"]
+  };
+
+  var URGENCY_WORDS = ["right now","still there","ongoing","blocking","actively","in progress","currently happening","hasn't stopped","won't stop"];
+  var DANGER_WORDS = ["gun","knife","weapon","bleeding","unconscious","on fire","stabbed","shot","assault in progress","can't breathe","heart attack","overdose"];
+
+  function detectCategory(lower){
+    var best = null, bestScore = 0;
+    Object.keys(CATEGORY_KEYWORDS).forEach(function(cat){
+      var score = 0;
+      CATEGORY_KEYWORDS[cat].forEach(function(kw){ if (lower.indexOf(kw) !== -1) score++; });
+      if (score > bestScore) { bestScore = score; best = cat; }
+    });
+    return bestScore > 0 ? best : "other";
+  }
+
+  function detectSeverity(category, lower){
+    var base = SEVERITY_BASE[category] || "routine";
+    var urgent = URGENCY_WORDS.some(function(w){ return lower.indexOf(w) !== -1; });
+    if (urgent && base === "routine") return "priority";
+    return base;
+  }
+
+  function extractSummary(text){
+    var trimmed = text.trim();
+    var firstSentence = trimmed.split(/(?<=[.!?])\s+/)[0] || trimmed;
+    if (firstSentence.length > 90) firstSentence = firstSentence.slice(0, 87).trim() + "...";
+    return firstSentence.charAt(0).toUpperCase() + firstSentence.slice(1);
+  }
+
+  function detectDanger(lower){
+    return DANGER_WORDS.some(function(w){ return lower.indexOf(w) !== -1; });
+  }
+
+  function extractLocation(text){
+    var streetRegex = /\b\d{1,6}\s+[A-Za-z0-9.'-]+(?:\s[A-Za-z0-9.'-]+){0,3}\s(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Highway|Hwy|Parkway|Pkwy)\b/i;
+    var m = text.match(streetRegex);
+    if (m) return m[0].trim();
+    var prepRegex = /\b(?:near|at|outside|behind|in front of|by)\s+([A-Z][A-Za-z0-9&.'\- ]{2,45}?)(?=[.,;]|\band\b|\bwhere\b|$)/;
+    var m2 = text.match(prepRegex);
+    if (m2) return m2[1].trim();
+    return "";
+  }
+
+  var state = {
+    step: 0,
+    description: "",
+    category: "other",
+    severity: "routine",
+    location: "",
+    problem: "",
+    anonymous: false,
+    name: "",
+    contact: "",
+    submitted: false,
+    ticketId: null,
+    ticketTime: null,
+    userEditedCategory: false,
+    userEditedLocation: false,
+    userEditedSeverity: false,
+    userEditedProblem: false,
+    notifyEmail: "",
+    autoOpenEmail: true
+  };
+
+  var log = [];
+  try {
+    var raw = localStorage.getItem("civicwatch_log");
+    if (raw) log = JSON.parse(raw);
+  } catch(e) { log = []; }
+
+  function saveLog(){
+    try { localStorage.setItem("civicwatch_log", JSON.stringify(log)); } catch(e) {}
+  }
+
+  function totalSteps(){ return 2; }
+
+  function renderTrack(){
+    var track = document.getElementById("stepTrack");
+    track.innerHTML = "";
+    for (var i=0; i<totalSteps(); i++){
+      var s = document.createElement("span");
+      if (i < state.step) s.className = "done";
+      else if (i === state.step) s.className = "current";
+      var bar = document.createElement("i");
+      s.appendChild(bar);
+      track.appendChild(s);
+    }
+  }
+
+  function esc(s){
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : s;
+    return d.innerHTML;
+  }
+
+  var detectTimer = null;
+  function runDetection(){
+    var text = state.description || "";
+    var lower = text.toLowerCase();
+
+    if (!text.trim()) {
+      renderDetectPanel();
+      renderSlip();
+      updateDangerCallout(false);
+      return;
+    }
+
+    var cat = detectCategory(lower);
+    var sev = detectSeverity(cat, lower);
+    var loc = extractLocation(text);
+    var danger = detectDanger(lower);
+
+    if (!state.userEditedCategory) state.category = cat;
+    if (!state.userEditedSeverity) state.severity = detectSeverity(state.category, lower);
+    if (!state.userEditedLocation && loc) state.location = loc;
+    if (!state.userEditedProblem) state.problem = extractSummary(text);
+
+    updateDangerCallout(danger);
+    renderDetectPanel();
+    renderSlip();
+  }
+
+  function updateDangerCallout(show){
+    var el = document.getElementById("dangerCallout");
+    var strip = document.getElementById("emergencyStrip");
+    if (el) el.classList.toggle("show", !!show);
+    if (strip) strip.classList.toggle("alert", !!show);
+  }
+
+  function sevPillHtml(sev){
+    if (sev === "urgent") return '<span class="sev-pill sev-urgent">Urgent</span>';
+    if (sev === "priority") return '<span class="sev-pill sev-priority">Priority</span>';
+    return '<span class="sev-pill sev-routine">Routine</span>';
+  }
+
+  function renderDetectPanel(){
+    var panel = document.getElementById("detectPanel");
+    if (!panel) return;
+    if (!state.description.trim()) {
+      panel.className = "detect-panel empty";
+      panel.innerHTML = "Start typing above — category, priority, and location will fill in automatically as you go.";
+      return;
+    }
+    panel.className = "detect-panel";
+    panel.innerHTML =
+      '<div class="detect-head"><span class="dot"></span>Auto-detected — edit anything that looks off</div>' +
+      '<div class="detect-grid">' +
+        '<div class="detect-field" style="grid-column: 1 / -1;">' +
+          '<label>Problem summary</label>' +
+          '<input type="text" id="problemInput" placeholder="Short summary of the problem" value="'+esc(state.problem)+'">' +
+        '</div>' +
+        '<div class="detect-field">' +
+          '<label>Category</label>' +
+          '<select id="catSelect">' +
+            Object.keys(CATEGORY_LABELS).map(function(k){
+              return '<option value="'+k+'"'+(state.category===k?" selected":"")+'>'+esc(CATEGORY_LABELS[k])+'</option>';
+            }).join("") +
+          '</select>' +
+        '</div>' +
+        '<div class="detect-field">' +
+          '<label>Priority</label>' +
+          '<select id="sevSelect">' +
+            '<option value="routine"'+(state.severity==="routine"?" selected":"")+'>Routine</option>' +
+            '<option value="priority"'+(state.severity==="priority"?" selected":"")+'>Priority</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="detect-field" style="grid-column: 1 / -1;">' +
+          '<label>Location</label>' +
+          '<input type="text" id="locInput" placeholder="Street, intersection, or landmark" value="'+esc(state.location)+'">' +
+        '</div>' +
+      '</div>' +
+      '<div class="safety-block" id="safetyBlock"></div>';
+
+    document.getElementById("problemInput").addEventListener("input", function(e){
+      state.problem = e.target.value;
+      state.userEditedProblem = true;
+      renderSlip();
+    });
+    document.getElementById("catSelect").addEventListener("change", function(e){
+      state.category = e.target.value;
+      state.userEditedCategory = true;
+      renderSafetyBlock();
+      renderSlip();
+    });
+    document.getElementById("sevSelect").addEventListener("change", function(e){
+      state.severity = e.target.value;
+      state.userEditedSeverity = true;
+      renderSlip();
+    });
+    document.getElementById("locInput").addEventListener("input", function(e){
+      state.location = e.target.value;
+      state.userEditedLocation = true;
+      renderSlip();
+    });
+    renderSafetyBlock();
+  }
+
+  function renderSafetyBlock(){
+    var el = document.getElementById("safetyBlock");
+    if (!el) return;
+    var measures = SAFETY_MEASURES[state.category] || SAFETY_MEASURES.other;
+    el.innerHTML =
+      '<div class="safety-head">Recommended safety measures</div>' +
+      '<ul class="safety-list">' +
+        measures.map(function(m){ return "<li>" + esc(m) + "</li>"; }).join("") +
+      '</ul>';
+  }
+
+  function renderStep(){
+    renderTrack();
+    var body = document.getElementById("stepBody");
+    body.innerHTML = "";
+
+    if (state.step === 0) {
+      body.innerHTML =
+        '<p class="q-eyebrow">Step 1 of ' + totalSteps() + '</p>' +
+        '<p class="q-title">Tell us what happened</p>' +
+        '<p class="q-help">Write it like you would to a friend — what, where, and when. The system reads it and fills in the category, priority, and location for you.</p>' +
+        '<textarea id="descInput" rows="5" placeholder="e.g. There\'s a downed power line blocking the sidewalk on Elm Street near the school, it\'s been sparking for the last hour.">'+esc(state.description)+'</textarea>' +
+        '<div class="danger-callout" id="dangerCallout"><strong>This sounds urgent.</strong> If anyone is in danger, please call your local emergency number now instead of continuing here.</div>' +
+        '<div class="detect-panel empty" id="detectPanel">Start typing above — category, priority, and location will fill in automatically as you go.</div>' +
+
+        '<label class="field-label">Reported location</label>' +
+        '<div class="toggle-row" style="margin-top:0;"><input type="checkbox" id="anonToggle" '+(state.anonymous?"checked":"")+'><label for="anonToggle">Report anonymously</label></div>' +
+        (state.anonymous ? "" :
+          '<label class="field-label">Your name (optional)</label>' +
+          '<input type="text" id="nameInput" placeholder="First and last name" value="'+esc(state.name)+'">' +
+          '<label class="field-label">Phone or email (optional)</label>' +
+          '<input type="text" id="contactInput" placeholder="In case follow-up is needed" value="'+esc(state.contact)+'">'
+        ) +
+        '<label class="field-label">Notify authorities (optional)</label>' +
+        '<input type="text" id="notifyEmailInput" placeholder="traffic-police@yourcity.gov" value="'+esc(state.notifyEmail)+'">' +
+        '<p class="hint">If you add an address, you\'ll get a ready-made email link and a copy button once the report is filed — nothing sends on its own.</p>' +
+        '<p class="err" id="descErr">Describe what happened and add a location before filing.</p>' +
+        '<div class="row-btns"><span></span><button type="button" class="primary" id="fileBtn">Generate and file report</button></div>';
+
+      var descEl = document.getElementById("descInput");
+      descEl.addEventListener("input", function(e){
+        state.description = e.target.value;
+        clearTimeout(detectTimer);
+        detectTimer = setTimeout(runDetection, 120);
+      });
+
+      document.getElementById("anonToggle").addEventListener("change", function(e){
+        state.anonymous = e.target.checked;
+        if (state.anonymous) { state.name = ""; state.contact = ""; }
+        renderStep();
+      });
+      var ni = document.getElementById("nameInput");
+      if (ni) ni.addEventListener("input", function(e){ state.name = e.target.value; renderSlip(); });
+      var ci = document.getElementById("contactInput");
+      if (ci) ci.addEventListener("input", function(e){ state.contact = e.target.value; renderSlip(); });
+
+      document.getElementById("notifyEmailInput").addEventListener("input", function(e){ state.notifyEmail = e.target.value; });
+
+      document.getElementById("fileBtn").addEventListener("click", function(){
+        if (!state.description.trim() || !state.location.trim()) {
+          document.getElementById("descErr").style.display = "block";
+          return;
+        }
+        submitReport();
+      });
+
+      renderDetectPanel();
+      updateDangerCallout(detectDanger((state.description||"").toLowerCase()));
+      return;
+    }
+
+    if (state.step === 1) {
+      var emailNote = state.notifyEmail
+        ? '<p>Use the link below to open an email to <strong>' + esc(state.notifyEmail) + '</strong> with the report pre-filled, or copy it to paste in yourself.</p>'
+        : '<p>Keep this ID for your records. If you left contact details, someone may follow up for more information.</p>';
+      body.innerHTML =
+        '<div class="confirm-box">' +
+          '<div class="ring">&#10003;</div>' +
+          '<h2>Report filed</h2>' +
+          '<p>Your ' + esc(CATEGORY_LABELS[state.category].toLowerCase()) + ' report has been logged for this session.</p>' +
+          '<div class="ticket-id-big">' + esc(state.ticketId) + '</div>' +
+          emailNote +
+          '<p class="err" id="dlErr">Downloading isn\'t available in this view.</p>' +
+          '<p class="err" id="copyErr">Couldn\'t copy automatically — select and copy the report manually.</p>' +
+          '<p class="hint" id="copyOk" style="display:none;">Report copied to clipboard.</p>' +
+        '</div>' +
+        '<div class="row-btns" style="justify-content:center; gap:10px; flex-wrap:wrap;">' +
+          '<button type="button" class="secondary" id="downloadTxtBtn">Download text file</button>' +
+          '<button type="button" class="primary" id="downloadPdfBtn">Download PDF report</button>' +
+          (state.notifyEmail
+            ? '<a href="'+esc(buildMailtoUrl())+'" class="secondary" style="font-family:\'Archivo\',sans-serif;font-weight:600;font-size:14px;border-radius:8px;padding:11px 18px;border:1px solid var(--line-strong);color:var(--text);text-decoration:none;display:inline-block;">Open email to send</a>' +
+              '<button type="button" class="secondary" id="copyBtn">Copy report</button>'
+            : '<button type="button" class="secondary" id="setEmailBtn">Add recipient email</button>') +
+          '<button type="button" class="ghost" id="newReportBtn">File another report</button>' +
+        '</div>';
+      document.getElementById("downloadTxtBtn").addEventListener("click", downloadReportTxt);
+      document.getElementById("downloadPdfBtn").addEventListener("click", downloadReportPdf);
+      var copyBtn = document.getElementById("copyBtn");
+      if (copyBtn) copyBtn.addEventListener("click", function(){
+        var text = buildReportText();
+        var okEl = document.getElementById("copyOk");
+        var errEl = document.getElementById("copyErr");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function(){
+            if (okEl) okEl.style.display = "block";
+          }).catch(function(){
+            if (errEl) errEl.style.display = "block";
+          });
+        } else if (errEl) {
+          errEl.style.display = "block";
+        }
+      });
+      var setEmailBtn = document.getElementById("setEmailBtn");
+      if (setEmailBtn) setEmailBtn.addEventListener("click", function(){
+        var addr = window.prompt("Send this report to which email address?", "");
+        if (!addr) return;
+        state.notifyEmail = addr;
+        renderStep();
+      });
+      document.getElementById("newReportBtn").addEventListener("click", function(){
+        state = { step: 0, description: "", category: "other", severity: "routine", location: "", problem: "", anonymous: false, name: "", contact: "", submitted: false, ticketId: null, ticketTime: null, userEditedCategory: false, userEditedLocation: false, userEditedSeverity: false, userEditedProblem: false, notifyEmail: "", autoOpenEmail: true };
+        updateDangerCallout(false);
+        renderStep();
+        renderSlip();
+      });
+    }
+  }
+
+  function renderSlip(){
+    var ticketLabel = document.getElementById("slipTicketLabel");
+    var status = document.getElementById("slipStatus");
+    var slipBody = document.getElementById("slipBody");
+
+    if (state.submitted) {
+      ticketLabel.textContent = state.ticketId;
+      status.textContent = "Filed";
+    } else {
+      ticketLabel.textContent = "Draft — no ticket yet";
+      status.textContent = "In progress";
+    }
+
+    if (!state.description.trim()) {
+      slipBody.innerHTML = '<p class="slip-empty">Start describing the incident to build your report.</p>';
+      return;
+    }
+
+    var rows = "";
+    rows += slipRow("Category", CATEGORY_LABELS[state.category], false);
+    rows += slipRow("Priority", sevPillHtml(state.severity), true);
+    if (state.problem) rows += slipRow("Problem", state.problem, false);
+    rows += slipRow("Details", state.description, false);
+    if (state.location) rows += slipRow("Location", state.location, false);
+    if (state.anonymous) {
+      rows += slipRow("Reporter", "Anonymous", false);
+    } else {
+      if (state.name) rows += slipRow("Name", state.name, false);
+      if (state.contact) rows += slipRow("Contact", state.contact, false);
+    }
+    slipBody.innerHTML = rows;
+  }
+
+  function slipRow(k, v, isHtml){
+    return '<div class="slip-row"><span class="k">'+esc(k)+'</span><span class="v">'+(isHtml ? v : esc(v))+'</span></div>';
+  }
+
+  function makeTicketId(){
+    var n = Math.floor(1000 + Math.random()*9000);
+    var d = new Date();
+    var mm = String(d.getMonth()+1).padStart(2,"0");
+    var dd = String(d.getDate()).padStart(2,"0");
+    return "CW-" + d.getFullYear() + mm + dd + "-" + n;
+  }
+
+  function submitReport(){
+    state.ticketId = makeTicketId();
+    state.ticketTime = new Date();
+    state.submitted = true;
+
+    log.unshift({
+      id: state.ticketId,
+      category: CATEGORY_LABELS[state.category],
+      severity: state.severity,
+      location: state.location,
+      time: state.ticketTime.toISOString()
+    });
+    if (log.length > 25) log = log.slice(0, 25);
+    saveLog();
+
+    state.step = 1;
+    renderStep();
+    renderSlip();
+    renderLog();
+  }
+
+  function buildMailtoUrl(){
+    var subject = "Incident report " + state.ticketId + " — " + CATEGORY_LABELS[state.category];
+    var body = buildReportText();
+    return "mailto:" + encodeURIComponent(state.notifyEmail) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  function fieldRow(label, value, width){
+    width = width || 22;
+    var padded = (label + ":").padEnd(width, " ");
+    return padded + value;
+  }
+
+  function wrapText(text, width){
+    var words = text.split(/\s+/);
+    var lines = [], cur = "";
+    words.forEach(function(w){
+      if ((cur + " " + w).trim().length > width) {
+        lines.push(cur.trim());
+        cur = w;
+      } else {
+        cur = (cur + " " + w).trim();
+      }
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  function buildReportText(){
+    var rule = "================================================================";
+    var thin = "----------------------------------------------------------------";
+    var sevLabel = state.severity.charAt(0).toUpperCase() + state.severity.slice(1);
+    var filedStr = state.ticketTime ? state.ticketTime.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : "";
+    var lines = [];
+
+    lines.push(rule);
+    lines.push("CIVIC WATCH — PUBLIC SAFETY INCIDENT REPORT");
+    lines.push(rule);
+    lines.push("");
+    lines.push(fieldRow("Report number", state.ticketId));
+    lines.push(fieldRow("Date filed", filedStr));
+    lines.push(fieldRow("Category", CATEGORY_LABELS[state.category]));
+    lines.push(fieldRow("Priority level", sevLabel));
+    lines.push(fieldRow("Location", state.location || "Not provided"));
+    if (state.problem) lines.push(fieldRow("Problem", state.problem));
+    lines.push("");
+    lines.push(thin);
+    lines.push("INCIDENT NARRATIVE");
+    lines.push(thin);
+    lines.push("");
+    wrapText(state.description, 64).forEach(function(l){ lines.push(l); });
+    lines.push("");
+    lines.push(thin);
+    lines.push("RECOMMENDED SAFETY MEASURES");
+    lines.push(thin);
+    lines.push("");
+    (SAFETY_MEASURES[state.category] || SAFETY_MEASURES.other).forEach(function(m){
+      wrapText("- " + m, 64).forEach(function(l){ lines.push(l); });
+    });
+    lines.push("");
+    lines.push(thin);
+    lines.push("REPORTING PARTY");
+    lines.push(thin);
+    lines.push("");
+    if (state.anonymous) {
+      lines.push(fieldRow("Status", "Anonymous — no identifying details provided"));
+    } else {
+      lines.push(fieldRow("Name", state.name || "Not provided"));
+      lines.push(fieldRow("Contact", state.contact || "Not provided"));
+    }
+    lines.push("");
+    lines.push(rule);
+    lines.push("This report was generated for the reporting party's records.");
+    lines.push("It has not been transmitted to any dispatch or law enforcement system.");
+    lines.push(rule);
+    return lines.join("\n");
+  }
+
+  function buildReportPdf(){
+    if (!window.jspdf || !window.jspdf.jsPDF) return null;
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit: "pt", format: "a4" });
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var margin = 48;
+    var y = 0;
+
+    var ink = [27, 36, 48];
+    var amber = [201, 138, 27];
+    var tealDark = [22, 60, 54];
+    var tealFill = [225, 239, 236];
+    var amberFill = [251, 237, 211];
+    var textSoft = [91, 86, 76];
+    var text = [33, 30, 25];
+
+    doc.setFillColor(ink[0], ink[1], ink[2]);
+    doc.rect(0, 0, pageWidth, 74, "F");
+    doc.setFillColor(amber[0], amber[1], amber[2]);
+    doc.rect(0, 74, pageWidth, 4, "F");
+
+    doc.setTextColor(255,255,255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("CIVIC WATCH", margin, 34);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.text("Public safety incident report", margin, 52);
+
+    y = 74 + 34;
+
+    doc.setTextColor(text[0], text[1], text[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(state.ticketId, margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(textSoft[0], textSoft[1], textSoft[2]);
+    var filedStr = state.ticketTime ? state.ticketTime.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : "";
+    doc.text("Filed " + filedStr, pageWidth - margin, y, { align: "right" });
+
+    y += 22;
+
+    var sevLabel = state.severity.charAt(0).toUpperCase() + state.severity.slice(1);
+    var sevFill = state.severity === "priority" ? amberFill : tealFill;
+    var sevText = state.severity === "priority" ? [110, 74, 14] : tealDark;
+
+    function fieldBlock(label, value, x, w){
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(textSoft[0], textSoft[1], textSoft[2]);
+      doc.text(label.toUpperCase(), x, y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10.5);
+      doc.setTextColor(text[0], text[1], text[2]);
+      var lines = doc.splitTextToSize(value, w);
+      doc.text(lines, x, y + 14);
+      return lines.length;
+    }
+
+    var colW = (pageWidth - margin*2 - 20) / 2;
+    var l1 = fieldBlock("Category", CATEGORY_LABELS[state.category], margin, colW);
+
+    doc.setFillColor(sevFill[0], sevFill[1], sevFill[2]);
+    doc.roundedRect(margin + colW + 20, y - 11, 90, 18, 9, 9, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(sevText[0], sevText[1], sevText[2]);
+    doc.text(sevLabel + " priority", margin + colW + 20 + 45, y + 1, { align: "center" });
+
+    y += Math.max(l1, 1) * 13 + 20;
+
+    var l2 = fieldBlock("Location", state.location || "Not provided", margin, pageWidth - margin*2);
+    y += Math.max(l2, 1) * 13 + 22;
+
+    if (state.problem) {
+      var l2b = fieldBlock("Problem summary", state.problem, margin, pageWidth - margin*2);
+      y += Math.max(l2b, 1) * 13 + 22;
+    }
+
+    doc.setDrawColor(216, 210, 194);
+    doc.setLineWidth(0.75);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 20;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(ink[0], ink[1], ink[2]);
+    doc.text("INCIDENT NARRATIVE", margin, y);
+    y += 16;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(text[0], text[1], text[2]);
+    var narrLines = doc.splitTextToSize(state.description || "No description provided.", pageWidth - margin*2);
+    doc.text(narrLines, margin, y, { lineHeightFactor: 1.5 });
+    y += narrLines.length * 15.5 + 16;
+
+    doc.setDrawColor(216, 210, 194);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 20;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(ink[0], ink[1], ink[2]);
+    doc.text("RECOMMENDED SAFETY MEASURES", margin, y);
+    y += 16;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(text[0], text[1], text[2]);
+    (SAFETY_MEASURES[state.category] || SAFETY_MEASURES.other).forEach(function(m){
+      var mLines = doc.splitTextToSize("• " + m, pageWidth - margin*2 - 10);
+      doc.text(mLines, margin + 6, y);
+      y += mLines.length * 14 + 4;
+    });
+    y += 6;
+
+    doc.setDrawColor(216, 210, 194);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 20;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(ink[0], ink[1], ink[2]);
+    doc.text("REPORTING PARTY", margin, y);
+    y += 16;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(text[0], text[1], text[2]);
+    if (state.anonymous) {
+      doc.text("Anonymous — no identifying details provided.", margin, y);
+      y += 16;
+    } else {
+      doc.text("Name: " + (state.name || "Not provided"), margin, y);
+      y += 16;
+      doc.text("Contact: " + (state.contact || "Not provided"), margin, y);
+      y += 16;
+    }
+
+    var pageHeight = doc.internal.pageSize.getHeight();
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8.5);
+    doc.setTextColor(textSoft[0], textSoft[1], textSoft[2]);
+    var footerLines = [
+      "This report was generated for the reporting party's records.",
+      "It has not been transmitted to any dispatch or law enforcement system."
+    ];
+    doc.text(footerLines, margin, pageHeight - 40);
+
+    return doc;
+  }
+
+  var downloadsNs = null;
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("downloads").then(function(ns){ downloadsNs = ns; }).catch(function(){ downloadsNs = null; });
+  }
+
+  function downloadReportTxt(){
+    var errEl = document.getElementById("dlErr");
+    if (!downloadsNs) {
+      if (errEl) errEl.style.display = "block";
+      return;
+    }
+    var text = buildReportText();
+    downloadsNs.save({ filename: state.ticketId + ".txt", data: text }).catch(function(){
+      if (errEl) errEl.style.display = "block";
+    });
+  }
+
+  function downloadReportPdf(){
+    var errEl = document.getElementById("dlErr");
+    if (!downloadsNs) {
+      if (errEl) errEl.style.display = "block";
+      return;
+    }
+    var doc = buildReportPdf();
+    if (!doc) {
+      if (errEl) errEl.style.display = "block";
+      return;
+    }
+    var blob = doc.output("blob");
+    downloadsNs.save({ filename: state.ticketId + ".pdf", data: blob }).catch(function(){
+      if (errEl) errEl.style.display = "block";
+    });
+  }
+
+  function renderLog(){
+    var el = document.getElementById("logList");
+    if (!log.length) {
+      el.innerHTML = '<div class="log-empty">Filed reports will appear here for this session.</div>';
+      return;
+    }
+    el.innerHTML = log.map(function(item){
+      var t = new Date(item.time);
+      var timeStr = t.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " · " + t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      return '<div class="log-item">' +
+        '<div class="li-top"><span class="li-id">'+esc(item.id)+'</span>'+sevPillHtml(item.severity)+'</div>' +
+        '<p class="li-cat">'+esc(item.category)+(item.location ? " — "+esc(item.location) : "")+'</p>' +
+        '<span class="li-time">'+esc(timeStr)+'</span>' +
+      '</div>';
+    }).join("");
+  }
+
+  renderStep();
+  renderSlip();
+  renderLog();
+})();
+</script>
+</body>
+</html>
