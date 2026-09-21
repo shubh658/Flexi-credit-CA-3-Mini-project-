@@ -1,0 +1,58 @@
+/* Custom scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+}
+
+/* Leaflet dark theme map container fixes */
+.leaflet-container {
+    background: #020617 !important;
+    font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    border: 1px solid #334155;
+    border-radius: 8px !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-tip {
+    background: #0f172a !important;
+}
+
+/* Pulse animation for P1 Critical Incidents */
+@keyframes critical-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(244, 63, 94, 0);
+    }
+}
+
+.animate-critical {
+    animation: critical-pulse 2s infinite;
+}
+
+/* Marker glow icons */
+.custom-map-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-size: 13px;
+    box-shadow: 0 0 12px currentColor;
+}

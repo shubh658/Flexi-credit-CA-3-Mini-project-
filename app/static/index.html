@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AegisResponse AI — Public Safety Incident & Dispatch Console</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/styles.css"/>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-xl z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-shield-halved text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-blue-400 bg-clip-text text-transparent flex items-center gap-2">
+                    AegisResponse <span class="text-xs px-2 py-0.5 rounded-full bg-blue-950 border border-blue-700 text-blue-300 font-mono">AI AGENT v2.0</span>
+                </h1>
+                <p class="text-xs text-slate-400">Next-Gen Public Safety Triage & Automated Emergency Dispatch Command Center</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 gap-1 text-sm font-medium">
+            <button id="tab-cmd-btn" onclick="switchTab('command')" class="px-4 py-1.5 rounded-md bg-blue-600 text-white shadow-sm flex items-center gap-2 transition">
+                <i class="fa-solid fa-tower-observation"></i> Command Center
+            </button>
+            <button id="tab-citizen-btn" onclick="switchTab('citizen')" class="px-4 py-1.5 rounded-md text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+                <i class="fa-solid fa-headset"></i> Citizen Triage Portal
+            </button>
+            <button id="tab-fleet-btn" onclick="switchTab('fleet')" class="px-4 py-1.5 rounded-md text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+                <i class="fa-solid fa-truck-medical"></i> Fleet & Analytics
+            </button>
+        </div>
+
+        <!-- System Status Badges -->
+        <div class="flex items-center gap-3 text-xs font-mono">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-800/80 text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>TAVILY INTEL: ACTIVE</span>
+            </div>
+            <div class="text-slate-400 hidden sm:block" id="live-clock">--:--:-- UTC</div>
+        </div>
+    </header>
+
+    <!-- Emergency Simulation & Tavily Search Control Bar -->
+    <section class="bg-slate-900/90 border-b border-slate-800/80 px-6 py-2.5 flex flex-wrap items-center justify-between text-xs gap-3">
+        <div class="flex items-center gap-2 text-slate-400">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            <span class="font-semibold text-slate-200 uppercase tracking-wider text-[11px]">Emergency Simulator:</span>
+            <div class="flex flex-wrap items-center gap-1.5" id="simulator-buttons">
+                <button onclick="triggerSim('fire_trapped')" class="px-2 py-0.5 rounded bg-rose-950/80 border border-rose-800 text-rose-300 hover:bg-rose-900 transition flex items-center gap-1">
+                    <i class="fa-solid fa-fire text-xs"></i> High-Rise Fire
+                </button>
+                <button onclick="triggerSim('hazmat_leak')" class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-800 text-amber-300 hover:bg-amber-900 transition flex items-center gap-1">
+                    <i class="fa-solid fa-biohazard text-xs"></i> Ammonia Leak
+                </button>
+                <button onclick="triggerSim('highway_crash')" class="px-2 py-0.5 rounded bg-orange-950/80 border border-orange-800 text-orange-300 hover:bg-orange-900 transition flex items-center gap-1">
+                    <i class="fa-solid fa-car-burst text-xs"></i> Tanker Crash
+                </button>
+                <button onclick="triggerSim('bank_robbery')" class="px-2 py-0.5 rounded bg-purple-950/80 border border-purple-800 text-purple-300 hover:bg-purple-900 transition flex items-center gap-1">
+                    <i class="fa-solid fa-gun text-xs"></i> Armed Robbery
+                </button>
+            </div>
+        </div>
+
+        <!-- Tavily Live Web Emergency Search Input -->
+        <div class="flex items-center gap-2 flex-1 max-w-md">
+            <form onsubmit="executeTavilySearch(event)" class="w-full flex gap-1">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-globe absolute left-2.5 top-2 text-cyan-400 text-xs"></i>
+                    <input type="text" id="tavily-query" placeholder="Tavily Live Search: e.g. Chlorine gas safety protocol..." class="w-full bg-slate-950 border border-cyan-900/60 rounded pl-7 pr-2 py-1 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"/>
+                </div>
+                <button type="submit" class="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-semibold text-xs transition flex items-center gap-1">
+                    <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Search
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Tavily Search Modal / Toast Container -->
+    <div id="tavily-result-banner" class="hidden bg-cyan-950/90 border-b border-cyan-800 px-6 py-2 text-xs text-cyan-200 flex items-center justify-between">
+        <div class="flex items-center gap-2 flex-1 pr-4">
+            <i class="fa-solid fa-circle-info text-cyan-400"></i>
+            <span id="tavily-result-text">Tavily live search results loading...</span>
+        </div>
+        <button onclick="closeTavilyBanner()" class="text-cyan-400 hover:text-white font-bold text-sm">✕</button>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 flex flex-col overflow-hidden relative">
+
+        <!-- TAB 1: COMMAND CENTER VIEW -->
+        <div id="view-command" class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+
+            <!-- Left Panel: Active Incidents List (3 Cols) -->
+            <div class="lg:col-span-3 border-r border-slate-800 bg-slate-900/60 flex flex-col overflow-hidden">
+                <div class="p-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-blue-400"></i>
+                        <h2 class="font-bold text-sm tracking-wide">Incident Queue</h2>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono" id="incident-count-badge">0 Active</span>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="p-2 border-b border-slate-800 bg-slate-950 flex gap-2 text-xs">
+                    <input type="text" id="filter-search" oninput="renderIncidentList()" placeholder="Filter by location/title..." class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"/>
+                    <select id="filter-category" onchange="renderIncidentList()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-300 focus:outline-none">
+                        <option value="ALL">All Categories</option>
+                        <option value="Fire">Fire</option>
+                        <option value="Medical">Medical</option>
+                        <option value="Crime">Crime</option>
+                        <option value="Hazard">Hazard</option>
+                        <option value="Traffic">Traffic</option>
+                    </select>
+                </div>
+
+                <!-- Incident List Stream -->
+                <div class="flex-1 overflow-y-auto p-2 space-y-2" id="incident-list-container">
+                    <!-- Dynamic Incident Cards Inserted Here -->
+                </div>
+            </div>
+
+            <!-- Center Panel: GIS Interactive Map (5 Cols) -->
+            <div class="lg:col-span-5 flex flex-col relative border-r border-slate-800 bg-slate-950">
+                <div class="p-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs px-4">
+                    <div class="flex items-center gap-2 text-slate-300 font-medium">
+                        <i class="fa-solid fa-map-location-dot text-emerald-400"></i>
+                        <span>Live GIS Dispatch Map</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-slate-400 font-mono text-[11px]">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Incident</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Police</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Fire</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> EMS</span>
+                    </div>
+                </div>
+                <div id="map" class="w-full flex-1 z-0"></div>
+            </div>
+
+            <!-- Right Panel: AI Dispatch & Co-Pilot Inspector (4 Cols) -->
+            <div class="lg:col-span-4 bg-slate-900/80 flex flex-col overflow-y-auto border-l border-slate-800 p-4 space-y-4" id="copilot-panel">
+                <div class="text-center py-12 text-slate-500">
+                    <i class="fa-solid fa-hand-pointer text-3xl mb-2 text-slate-600 animate-bounce"></i>
+                    <p class="text-sm">Select an incident from the queue to inspect AI analysis and dispatch emergency units.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: CITIZEN EMERGENCY TRIAGE PORTAL -->
+        <div id="view-citizen" class="flex-1 hidden grid grid-cols-1 lg:grid-cols-12 p-6 gap-6 overflow-y-auto bg-slate-950">
+
+            <!-- Citizen Incident Report Form (5 Cols) -->
+            <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-rose-600/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg">
+                            <i class="fa-solid fa-phone-volume"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100">Citizen Emergency Intake</h2>
+                            <p class="text-xs text-slate-400">Direct AI emergency report submission portal</p>
+                        </div>
+                    </div>
+
+                    <form id="citizen-report-form" onsubmit="submitCitizenReport(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Location / Address</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-location-dot absolute left-3 top-3 text-slate-500 text-xs"></i>
+                                <input type="text" id="report-location" placeholder="e.g. 142 Elm Street, Apt 3B or Main & 5th Ave" required class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:outline-none"/>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Caller Identification</label>
+                            <input type="text" id="report-caller" placeholder="Name or Anonymous Caller" value="Citizen Caller" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"/>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Describe Emergency Incident</label>
+                            <textarea id="report-description" rows="5" placeholder="Describe what is happening clearly: e.g., 'There is heavy smoke coming from the garage, 2 people are trapped, one person has severe leg bleeding!'" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:outline-none resize-none"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold rounded-lg shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition transform active:scale-95">
+                            <i class="fa-solid fa-paper-plane"></i> TRANSMIT EMERGENCY ALERT TO AI TRIAGE
+                        </button>
+                    </form>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+                    <span><i class="fa-solid fa-lock text-emerald-400"></i> Encrypted Direct 911 Tunnel</span>
+                    <span>Response SLA: &lt; 30 Seconds</span>
+                </div>
+            </div>
+
+            <!-- Citizen Interactive AI Safety Assistant (7 Cols) -->
+            <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl flex flex-col justify-between overflow-hidden">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-100 text-sm">Aegis First-Aid & Safety Co-Pilot</h3>
+                            <p class="text-xs text-slate-400" id="active-chat-incident-label">No active emergency chat session selected</p>
+                        </div>
+                    </div>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-mono" id="chat-status-badge">Idle</span>
+                </div>
+
+                <!-- Chat History Messages Container -->
+                <div class="flex-1 overflow-y-auto space-y-3 pr-2 min-h-[350px] max-h-[450px]" id="chat-messages-box">
+                    <div class="text-center py-16 text-slate-500 text-sm">
+                        <i class="fa-solid fa-comments text-4xl mb-3 text-slate-700"></i>
+                        <p>Submit an emergency report on the left or select an active incident to talk with the AI safety agent.</p>
+                    </div>
+                </div>
+
+                <!-- Chat Input Controls -->
+                <form id="citizen-chat-form" onsubmit="sendCitizenChatMessage(event)" class="mt-4 pt-3 border-t border-slate-800 flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Type update or ask safety question (e.g. 'How do I stop bleeding?')..." disabled class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:outline-none disabled:opacity-50"/>
+                    <button type="submit" id="chat-send-btn" disabled class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg shadow transition disabled:opacity-50 flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i> Send
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 3: FLEET STATUS & ANALYTICS VIEW -->
+        <div id="view-fleet" class="flex-1 hidden p-6 overflow-y-auto bg-slate-950 space-y-6">
+
+            <!-- System Metrics Banner -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="analytics-cards">
+                <!-- Metrics cards inserted dynamically -->
+            </div>
+
+            <!-- Fleet Units Grid & Audit Logs -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Response Units Fleet Table (7 Cols) -->
+                <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-truck-shield text-emerald-400"></i>
+                            <h3 class="font-bold text-slate-200 text-sm">Emergency Fleet Status</h3>
+                        </div>
+                        <button onclick="loadAnalyticsAndFleet()" class="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-right"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px]">
+                                <tr>
+                                    <th class="p-2.5">Unit ID</th>
+                                    <th class="p-2.5">Name</th>
+                                    <th class="p-2.5">Type</th>
+                                    <th class="p-2.5">Status</th>
+                                    <th class="p-2.5">Base Station</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleet-units-tbody" class="divide-y divide-slate-800/60">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Audit Log Stream (5 Cols) -->
+                <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col">
+                    <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                        <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                        <h3 class="font-bold text-slate-200 text-sm">Audit & Security Logs</h3>
+                    </div>
+                    <div class="flex-1 overflow-y-auto space-y-2 max-h-[380px] font-mono text-xs pr-1" id="audit-log-container">
+                        <!-- Dynamic logs -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- App JavaScript -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
